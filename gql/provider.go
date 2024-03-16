@@ -83,3 +83,25 @@ type GetPublicKey struct {
 		}
 	}
 }
+
+type CreateNewScript struct {
+	Provider struct {
+		ScriptGroup struct {
+			Scripts struct {
+				Create struct {
+					Uuid uuid.UUID
+				} `graphql:"create(alt_id: $alt_id, name: $name, description: $description, price_in_cents: $price_in_cents, recurrence: $recurrence, sla_sec: $sla_sec, token_lifetime_sec: $token_lifetime_sec, public: $public)"`
+			}
+		} `graphql:"script_group(id: $scriptGroupId)"`
+	} `graphql:"provider(id: $providerId)"`
+}
+
+type CreateNewScriptGroup struct {
+	Provider struct {
+		ScriptGroups struct {
+			Create struct {
+
+			} `graphql:"create(alt_id: $alt_id, name: $name, description: $description, public: $public)"`
+		}
+	} `graphql:"provider(id: $providerId)"`
+}
