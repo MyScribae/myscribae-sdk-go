@@ -72,7 +72,7 @@ var (
 	ErrFailedToCreateClient       = errors.New("failed to create graphql client")
 )
 
-func (p *Provider) Sync() error {
+func (p *Provider) Sync(ctx context.Context) error {
 	p.Println("Syncing provider")
 
 	if p.initialized {
@@ -99,6 +99,45 @@ func (p *Provider) Sync() error {
 
 	p.RemoteProfile = &query
 	p.Uuid = query.ProviderSelf.Uuid
+
+	// Sync script groups
+	existingScriptGroups := make(map[string]*gql.RemoteScriptGroup)
+	for _, remoteScriptGroup := range query.ProviderSelf.ScriptGroups {
+		existingScriptGroups[remoteScriptGroup.AltID] = &remoteScriptGroup
+	}
+
+	scriptGroupsSeen := make(map[string]bool)
+	for _, sg := range p.ScriptGroups {
+		if _, ok := scriptGroupsSeen[sg.Profile.AltID]; ok {
+			sg.Println("Script group exists and has already been seen")
+			continue
+		} else {
+			sg.Println("Syncing script group")
+		}
+
+		sg.Provider = p
+		scriptGroupsSeen[sg.Profile.AltID] = true
+
+		sg.Sync(ctx, existingScriptGroups[sg.Profile.AltID])
+	}
+
+	for _, rsg := range query.ProviderSelf.ScriptGroups {
+		if _, ok := scriptGroupsSeen[rsg.AltID]; !ok {
+			p.Printf("Script group %s has been abandoned", rsg.AltID)
+
+			var mutation gql.EditScriptGroup
+			err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
+				"id":     rsg.Uuid,
+				"public": false,
+			})
+
+			if err != nil {
+				panic("failed to abandon script group: " + err.Error())
+			}
+		}
+	}
+
+	p.Println("Provider synced")
 
 	return nil
 }
@@ -180,6 +219,7 @@ func (p *Provider) local_initialize(
 }
 
 func InitializeProvider(
+	ctx context.Context,
 	config ProviderConfig,
 	providerProfile ProviderProfileInput,
 	scriptGroups []ScriptGroupInput,
@@ -198,7 +238,7 @@ func InitializeProvider(
 	}
 
 	// Attempt to connect to backend service
-	if err := p.Sync(); err != nil {
+	if err := p.Sync(ctx); err != nil {
 		return nil, err
 	}
 
