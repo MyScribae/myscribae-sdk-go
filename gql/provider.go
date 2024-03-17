@@ -15,20 +15,24 @@ type ProviderProfile struct {
 	Url         *string
 }
 
+type RemoteScript struct {
+	Uuid    uuid.UUID
+	AltID   string
+	Version string
+}
+
+type RemoteScriptGroup struct {
+	Uuid    uuid.UUID
+	AltID   string
+	Version string
+	Scripts []RemoteScript
+}
+
 type GetProviderProfile struct {
 	ProviderSelf struct {
 		Uuid         uuid.UUID
 		Version      string
-		ScriptGroups []struct {
-			Uuid    uuid.UUID
-			AltID   string
-			Version string
-			Script  []struct {
-				Uuid    uuid.UUID
-				AltID   string
-				Version string
-			}
-		}
+		ScriptGroups []RemoteScriptGroup
 	}
 }
 
@@ -100,7 +104,7 @@ type CreateNewScriptGroup struct {
 	Provider struct {
 		ScriptGroups struct {
 			Create struct {
-
+				Uuid uuid.UUID
 			} `graphql:"create(alt_id: $alt_id, name: $name, description: $description, public: $public)"`
 		}
 	} `graphql:"provider(id: $providerId)"`

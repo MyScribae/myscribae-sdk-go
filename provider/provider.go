@@ -3,6 +3,9 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
+	"net/http"
 	"os"
 
 	"github.com/Pritch009/myscribae-sdk-go/environment"
@@ -18,9 +21,9 @@ type Provider struct {
 	ApiKey        *string
 	ApiUrl        *string
 	initialized   bool
-	RemoteProfile *gql.ProviderProfile
+	RemoteProfile *gql.GetProviderProfile
 
-	client *graphql.Client
+	Client *graphql.Client
 
 	ScriptGroups []*ScriptGroup
 }
@@ -70,25 +73,22 @@ var (
 )
 
 func (p *Provider) Sync() error {
+	p.Println("Syncing provider")
+
 	if p.initialized {
+		p.Println("Provider already initialized")
 		return ErrProviderAlreadyInitialized
 	}
 
 	// Attempt to connect to backend services
-	p.client = gql.CreateGraphQLClient(*p.ApiUrl)
-	if p.client == nil {
+	p.Client = gql.CreateGraphQLClient(*p.ApiUrl)
+	if p.Client == nil {
 		return ErrFailedToCreateClient
 	}
 
+	var query gql.GetProviderProfile
 	// Ask client for provider profile
-	var query struct {
-		ProviderSelf struct {
-			Uuid    uuid.UUID
-			Profile gql.ProviderProfile `graphql:"... on ProviderProfile"`
-		}
-	}
-
-	err := p.client.Query(
+	err := p.Client.Query(
 		context.Background(),
 		&query,
 		nil,
@@ -97,16 +97,37 @@ func (p *Provider) Sync() error {
 		return err
 	}
 
+	p.RemoteProfile = &query
 	p.Uuid = query.ProviderSelf.Uuid
 
 	return nil
+}
+
+func (p *Provider) Printf(format string, a ...interface{}) {
+	log.Printf(fmt.Sprintf("[%s] %s", p.AltID, format), a...)
+}
+
+func (p *Provider) Println(a ...interface{}) {
+	log.Println(fmt.Sprintf("[%s]", p.AltID), a)
+}
+
+func (p *Provider) SecretClient() *graphql.Client {
+	return p.Client.WithRequestModifier(
+		func(r *http.Request) {
+			r.Header.Set("X-MyScribae-ApiKey", *p.ApiKey)
+		},
+	)
+
 }
 
 // / Loads the provider secrets if they are not provided
 func (p *Provider) local_initialize(
 	scriptGroups []ScriptGroupInput,
 ) error {
+	p.Println("Initializing provider")
+
 	if p.initialized {
+		p.Println("Provider already initialized")
 		return ErrProviderAlreadyInitialized
 	}
 
@@ -135,18 +156,25 @@ func (p *Provider) local_initialize(
 	}
 
 	p.ScriptGroups = make([]*ScriptGroup, 0)
-	for _, scriptGroup := range scriptGroups {
-		scripts := make([]*Script, 0)
-		for _, script := range scriptGroup.Scripts {
-			scripts = append(scripts, &Script{ScriptInput: script})
+	for _, scriptGroupInput := range scriptGroups {
+		scriptGroup := &ScriptGroup{
+			Provider: p,
+			Profile:  scriptGroupInput,
+			Scripts:  make([]Script, 0),
 		}
-		p.ScriptGroups = append(p.ScriptGroups, &ScriptGroup{
-			ScriptGroupInput: scriptGroup,
-			Scripts:          scripts,
-		})
+
+		for _, script := range scriptGroupInput.Scripts {
+			scriptGroup.Scripts = append(scriptGroup.Scripts, Script{
+				ScriptGroup: scriptGroup,
+				Profile:     script,
+			})
+		}
+
+		p.ScriptGroups = append(p.ScriptGroups, scriptGroup)
 	}
 
 	p.initialized = true
+	p.Println("Provider initialized")
 
 	return nil
 }
