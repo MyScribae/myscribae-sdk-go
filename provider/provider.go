@@ -10,6 +10,7 @@ import (
 
 	"github.com/Pritch009/myscribae-sdk-go/environment"
 	"github.com/Pritch009/myscribae-sdk-go/gql"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hasura/go-graphql-client"
 )
@@ -22,6 +23,7 @@ type Provider struct {
 	ApiUrl        string
 	initialized   bool
 	RemoteProfile *gql.GetProviderProfile
+	publicKey     *string
 
 	Client *graphql.Client
 
@@ -54,6 +56,53 @@ var (
 	ErrFailedToCreateClient       = errors.New("failed to create graphql client")
 )
 
+// ValidateSubscriberToken validates a subscriber token
+func (p *Provider) ValidateSubscriberToken(
+	token string,
+) (*SubscriberToken, error) {
+	if err := p.assertInitialized(); err != nil {
+		return nil, err
+	}
+
+	publicKey, err := p.GetPublicKey()
+	if err != nil {
+		return nil, err
+	}
+
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return []byte(*publicKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSubscriberToken(parsedToken)
+}
+
+// IssueSubscriberToken issues a subscriber token
+func (p *Provider) IssueSubscriberToken(
+	subscriberId string,
+) (*string, error) {
+	if err := p.assertInitialized(); err != nil {
+		return nil, err
+	}
+
+	var mutation gql.IssueSubscriberToken
+	err := p.secretClient().Mutate(
+		context.Background(),
+		&mutation,
+		map[string]interface{}{
+			"subscriberId": subscriberId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mutation.Provider.Tokens.Issue, nil
+}
+
+// Sync syncs the provider with the backend
 func (p *Provider) Sync(ctx context.Context) error {
 	p.Println("Syncing provider")
 
@@ -124,54 +173,36 @@ func (p *Provider) Sync(ctx context.Context) error {
 	return nil
 }
 
+// GetPublicKey returns the public key of the provider
+func (p *Provider) GetPublicKey() (*string, error) {
+	if err := p.assertInitialized(); err != nil {
+		return nil, err
+	}
+
+	if p.publicKey != nil {
+		return p.publicKey, nil
+	}
+
+	var query gql.GetPublicKey
+	err := p.secretClient().Query(
+		context.Background(),
+		&query,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	p.publicKey = &query.ProviderSelf.Keys.PublicKey
+	return p.publicKey, nil
+}
+
 func (p *Provider) Printf(format string, a ...interface{}) {
 	log.Printf(fmt.Sprintf("[%s] %s", p.Profile.AltID, format), a...)
 }
 
 func (p *Provider) Println(a ...interface{}) {
 	log.Println(fmt.Sprintf("[%s]", p.Profile.AltID), a)
-}
-
-func (p *Provider) SecretClient() *graphql.Client {
-	return p.Client.WithRequestModifier(
-		func(r *http.Request) {
-			r.Header.Set("X-MyScribae-ApiKey", p.ApiKey)
-		},
-	)
-
-}
-
-// / Loads the provider secrets if they are not provided
-func (p *Provider) local_initialize() error {
-	p.Println("Initializing provider")
-
-	if p.initialized {
-		p.Println("Provider already initialized")
-		return ErrProviderAlreadyInitialized
-	}
-
-	p.ScriptGroups = make([]*ScriptGroup, 0)
-	for _, scriptGroupInput := range p.Profile.ScriptGroups {
-		scriptGroup := &ScriptGroup{
-			Provider: p,
-			Profile:  scriptGroupInput,
-			Scripts:  make([]Script, 0),
-		}
-
-		for _, script := range scriptGroupInput.Scripts {
-			scriptGroup.Scripts = append(scriptGroup.Scripts, Script{
-				ScriptGroup: scriptGroup,
-				Profile:     script,
-			})
-		}
-
-		p.ScriptGroups = append(p.ScriptGroups, scriptGroup)
-	}
-
-	p.initialized = true
-	p.Println("Provider initialized")
-
-	return nil
 }
 
 func InitializeProvider(
@@ -212,7 +243,7 @@ func InitializeProvider(
 	}
 
 	// Attempt to load from env if not provided
-	if err := p.local_initialize(); err != nil {
+	if err := p.localInitialize(); err != nil {
 		return nil, err
 	}
 
@@ -222,4 +253,55 @@ func InitializeProvider(
 	}
 
 	return p, nil
+}
+
+// secretClient returns a client with the provider's secret key
+func (p *Provider) secretClient() *graphql.Client {
+	return p.Client.WithRequestModifier(
+		func(r *http.Request) {
+			r.Header.Set("X-MyScribae-ApiKey", p.ApiKey)
+		},
+	)
+
+}
+
+// / Loads the provider secrets if they are not provided
+func (p *Provider) localInitialize() error {
+	p.Println("Initializing provider")
+
+	if p.initialized {
+		p.Println("Provider already initialized")
+		return ErrProviderAlreadyInitialized
+	}
+
+	p.ScriptGroups = make([]*ScriptGroup, 0)
+	for _, scriptGroupInput := range p.Profile.ScriptGroups {
+		scriptGroup := &ScriptGroup{
+			Provider: p,
+			Profile:  scriptGroupInput,
+			Scripts:  make([]Script, 0),
+		}
+
+		for _, script := range scriptGroupInput.Scripts {
+			scriptGroup.Scripts = append(scriptGroup.Scripts, Script{
+				ScriptGroup: scriptGroup,
+				Profile:     script,
+			})
+		}
+
+		p.ScriptGroups = append(p.ScriptGroups, scriptGroup)
+	}
+
+	p.initialized = true
+	p.Println("Provider initialized")
+
+	return nil
+}
+
+func (p *Provider) assertInitialized() error {
+	if !p.initialized {
+		return ErrProviderNotInitialized
+	}
+
+	return nil
 }
