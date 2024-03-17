@@ -14,8 +14,16 @@ import (
 type ScriptGroup struct {
 	Uuid     *uuid.UUID
 	Provider *Provider
-	Profile  ScriptGroupInput
 	Scripts  []Script
+	Profile  ScriptGroupInput
+}
+
+type ScriptGroupInput struct {
+	AltID       string        `json:"alt_id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Public      bool          `json:"public"`
+	Scripts     []ScriptInput `json:"scripts"`
 }
 
 func (sg *ScriptGroup) Printf(format string, a ...interface{}) {
@@ -36,7 +44,7 @@ func (sg *ScriptGroup) Sync(ctx context.Context, remoteScriptGroup *gql.RemoteSc
 				utilities.NullString(&sg.Profile.AltID),
 				utilities.NullString(&sg.Profile.Name),
 				utilities.NullString(&sg.Profile.Description),
-				utilities.NotNullString(fmt.Sprintf("%t", sg.Provider.Public)),
+				utilities.NotNullString(fmt.Sprintf("%t", sg.Provider.Profile.Public)),
 			},
 		)
 

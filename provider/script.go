@@ -12,9 +12,20 @@ import (
 )
 
 type Script struct {
+	ScriptGroup *ScriptGroup
 	Uuid        *uuid.UUID
 	Profile     ScriptInput
-	ScriptGroup *ScriptGroup
+}
+
+type ScriptInput struct {
+	AltID            string `json:"alt_id"`
+	Name             string `json:"name"`
+	Description      string `json:"description"`
+	Recurrence       string `json:"recurrence"`
+	PriceInCents     int    `json:"price_in_cents"`
+	SlaSec           int    `json:"sla_sec"`
+	TokenLifetimeSec int    `json:"token_lifetime_sec"`
+	Public           bool   `json:"public"`
 }
 
 func (s *Script) Printf(format string, a ...interface{}) {
