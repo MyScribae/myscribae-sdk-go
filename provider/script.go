@@ -2,19 +2,16 @@ package provider
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"log"
 
 	"github.com/Pritch009/myscribae-sdk-go/gql"
-	"github.com/Pritch009/myscribae-sdk-go/utilities"
 	"github.com/google/uuid"
 )
 
 type Script struct {
-	ScriptGroup *ScriptGroup
-	Uuid        *uuid.UUID
-	Profile     ScriptInput
+	ScriptGroupUuid *uuid.UUID
+	Uuid            *uuid.UUID
+	AltID           string
+	Provider        *Provider
 }
 
 type ScriptInput struct {
@@ -28,76 +25,75 @@ type ScriptInput struct {
 	Public           bool   `json:"public"`
 }
 
-func (s *Script) Printf(format string, a ...interface{}) {
-	log.Printf(fmt.Sprintf("[%s] %s", s.Profile.AltID, format), a...)
-}
+func (s *Script) Create(ctx context.Context, input ScriptInput) (*uuid.UUID, error) {
+	var mutation gql.CreateNewScript
+	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"script_group_id":    s.ScriptGroupUuid,
+		"alt_id":             input.AltID,
+		"name":               input.Name,
+		"description":        input.Description,
+		"recurrence":         input.Recurrence,
+		"price_in_cents":     input.PriceInCents,
+		"sla_sec":            input.SlaSec,
+		"token_lifetime_sec": input.TokenLifetimeSec,
+		"public":             input.Public,
+	})
 
-func (s *Script) Println(a ...interface{}) {
-	log.Println(fmt.Sprintf("[%s]", s.Profile.AltID), a)
-}
+	if err != nil {
 
-func (s *Script) Sync(ctx context.Context, remoteScript *gql.RemoteScript) {
-	s.Println("Syncing script")
-
-	if remoteScript != nil {
-		hash := utilities.VersionHash(
-			[]sql.NullString{
-				utilities.NullString(&s.Profile.AltID),
-				utilities.NullString(&s.Profile.Name),
-				utilities.NullString(&s.Profile.Description),
-				utilities.NotNullString(fmt.Sprintf("%d", s.Profile.PriceInCents)),
-				utilities.NotNullString(s.Profile.Recurrence),
-				utilities.NotNullString(fmt.Sprintf("%d", s.Profile.TokenLifetimeSec)),
-				utilities.NotNullString(fmt.Sprintf("%d", s.Profile.SlaSec)),
-				utilities.NotNullString(fmt.Sprintf("%t", s.Profile.Public)),
-			},
-		)
-
-		if remoteScript.Version != hash {
-			s.Println("updating script")
-
-			var mutation gql.EditScript
-			err := s.ScriptGroup.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-				"alt_id":             s.Profile.AltID,
-				"name":               s.Profile.Name,
-				"description":        s.Profile.Description,
-				"recurrence":         s.Profile.Recurrence,
-				"price_in_cents":     s.Profile.PriceInCents,
-				"sla_sec":            s.Profile.SlaSec,
-				"token_lifetime_sec": s.Profile.TokenLifetimeSec,
-				"public":             s.Profile.Public,
-			})
-			if err != nil {
-				panic("failed to update script: " + err.Error())
-			}
-
-			s.Uuid = &mutation.Provider.ScriptGroup.Script.Edit.Uuid
-			s.Println("Script updated.")
-		} else {
-			s.Uuid = &remoteScript.Uuid
-		}
-	} else {
-		log.Printf("Creating new script %s", s.Profile.Name)
-
-		var mutation gql.CreateNewScript
-		err := s.ScriptGroup.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-			"script_group_id":    s.ScriptGroup.Uuid,
-			"alt_id":             s.Profile.AltID,
-			"name":               s.Profile.Name,
-			"description":        s.Profile.Description,
-			"recurrence":         s.Profile.Recurrence,
-			"price_in_cents":     s.Profile.PriceInCents,
-			"sla_sec":            s.Profile.SlaSec,
-			"token_lifetime_sec": s.Profile.TokenLifetimeSec,
-			"public":             s.Profile.Public,
-		})
-
-		if err != nil {
-			panic("failed to create script: " + err.Error())
-		}
-
-		s.Uuid = &mutation.Provider.ScriptGroup.Scripts.Create.Uuid
+		return nil, err
 	}
 
-	log.Println("Script up to date")
+	s.Uuid = &mutation.Provider.ScriptGroup.Scripts.Create.Uuid
+	return s.Uuid, nil
+}
+
+func (s *Script) Read(ctx context.Context) (*gql.ScriptProfile, error) {
+	var query gql.GetScript
+
+	if err := s.Provider.Client.Query(ctx, &query, map[string]interface{}{
+		"script_group_id": s.ScriptGroupUuid,
+		"id":              s.AltID,
+	}); err != nil {
+		return nil, err
+	}
+
+	s.Uuid = &query.Provider.ScriptGroup.Script.Uuid
+	return &query.Provider.ScriptGroup.Script, nil
+}
+
+func (s *Script) Update(ctx context.Context, input ScriptInput) (*uuid.UUID, error) {
+	var mutation gql.EditScript
+	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"script_group_id":    s.ScriptGroupUuid,
+		"id":                 s.AltID,
+		"alt_id":             input.AltID,
+		"name":               input.Name,
+		"description":        input.Description,
+		"recurrence":         input.Recurrence,
+		"price_in_cents":     input.PriceInCents,
+		"sla_sec":            input.SlaSec,
+		"token_lifetime_sec": input.TokenLifetimeSec,
+		"public":             input.Public,
+	})
+	if err != nil {
+		panic("failed to update script: " + err.Error())
+	}
+
+	s.Uuid = &mutation.Provider.ScriptGroup.Script.Edit.Uuid
+	return s.Uuid, nil
+}
+
+func (s *Script) Delete(ctx context.Context) error {
+	var mutation gql.EditScript
+	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"script_group_id": s.ScriptGroupUuid,
+		"id":              s.AltID,
+		"public":          false,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -5,14 +5,19 @@ import (
 )
 
 type ProviderProfile struct {
-	AccountTier string
-	AltId       *string
-	Color       *string
-	Description string
-	Logo        *string
-	MyRole      *string
-	Name        string
-	Url         *string
+	Uuid           uuid.UUID
+	AltID          *string
+	Category       string
+	Name           string
+	Description    string
+	AccountTier    *string
+	Color          *string
+	LogoUrl        *string
+	BannerUrl      *string
+	MyRole         *string
+	Url            *string
+	AccountService bool
+	Public         bool
 }
 
 type RemoteScript struct {
@@ -29,19 +34,29 @@ type RemoteScriptGroup struct {
 }
 
 type GetProviderProfile struct {
-	ProviderSelf struct {
-		Uuid         uuid.UUID
-		Version      string
-		ScriptGroups []RemoteScriptGroup
-	}
+	ProviderSelf ProviderProfile
 }
 
 type EditProviderProfile struct {
 	Provider struct {
 		Edit struct {
 			Uuid uuid.UUID
-		} `graphql:"edit(alt_id: $alt_id, name: $name, description: $description, logo: $logo, url: $url, color: $color, public: $public)"`
+		} `graphql:"edit(alt_id: $alt_id, name: $name, category: $category, description: $description, logo: $logo, url: $url, color: $color, public: $public)"`
 	}
+}
+
+type GetScriptGroup struct {
+	Provider struct {
+		ScriptGroup ScriptGroupProfile `graphql:"script_group(id: $id)"`
+	}
+}
+
+type ScriptGroupProfile struct {
+	Uuid        uuid.UUID
+	AltID       string
+	Name        string
+	Description string
+	Public      bool
 }
 
 type EditScriptGroup struct {
@@ -54,6 +69,26 @@ type EditScriptGroup struct {
 	}
 }
 
+type GetScript struct {
+	Provider struct {
+		ScriptGroup struct {
+			Script ScriptProfile `graphql:"script(id: $id)"`
+		} `graphql:"script_group(id: $script_group_id)"`
+	}
+}
+
+type ScriptProfile struct {
+	Uuid             uuid.UUID
+	AltID            string
+	Name             string
+	Description      string
+	Recurrence       string
+	PriceInCents     int
+	SlaSec           int
+	TokenLifetimeSec int
+	Public           bool
+}
+
 type EditScript struct {
 	Provider struct {
 		ScriptGroup struct {
@@ -62,7 +97,7 @@ type EditScript struct {
 					Uuid uuid.UUID
 				} `graphql:"edit(name: $name, description: $description, price_in_cents: $price_in_cents, sla_sec: $sla_sec, token_lifetime_sec: $token_lifetime_sec, public: $public)"`
 			} `graphql:"script(id: $id)"`
-		} `graphql:"script_group(id: $script_group_id)"`
+		} `graphql:"script_group(id: $script_group_uuid)"`
 	}
 }
 
@@ -76,7 +111,7 @@ type IssueSubscriberToken struct {
 
 type RequestUserAssociation struct {
 	Provider struct {
-		Associate uuid.UUID `graphql:"associate(user_identifier: $user_identifier, user_avatar_src: $user_avatar_src, script_credits: $script_credits, redirect: $redirect)"`
+		Associate uuid.UUID `graphql:"associate(user_identifier: $user_identifier, user_avatar_url: $user_avatar_url, script_credits: $script_credits, redirect: $redirect)"`
 	}
 }
 

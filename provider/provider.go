@@ -17,17 +17,13 @@ import (
 
 type Provider struct {
 	Uuid          uuid.UUID
-	Profile       ProviderProfileInput
 	SecretKey     string
 	ApiKey        string
 	ApiUrl        string
-	initialized   bool
 	RemoteProfile *gql.GetProviderProfile
 	publicKey     *string
 
 	Client *graphql.Client
-
-	ScriptGroups []*ScriptGroup
 }
 
 type ProviderConfig struct {
@@ -37,14 +33,16 @@ type ProviderConfig struct {
 }
 
 type ProviderProfileInput struct {
-	AltID        string             `json:"alt_id"`
-	Name         string             `json:"name"`
-	Description  string             `json:"description"`
-	Logo         string             `json:"logo"`
-	Url          string             `json:"url"`
-	Color        string             `json:"color"`
-	Public       bool               `json:"public"`
-	ScriptGroups []ScriptGroupInput `json:"script_groups"`
+	AltID          string  `json:"alt_id"`
+	Name           string  `json:"name"`
+	Category       *string `json:"category"`
+	Description    string  `json:"description"`
+	LogoUrl        *string `json:"logo_url"`
+	BannerUrl      *string `json:"banner_url"`
+	Url            *string `json:"url"`
+	Color          *string `json:"color"`
+	Public         bool    `json:"public"`
+	AccountService bool    `json:"account_service"`
 }
 
 var (
@@ -60,10 +58,6 @@ var (
 func (p *Provider) ValidateSubscriberToken(
 	token string,
 ) (*SubscriberToken, error) {
-	if err := p.assertInitialized(); err != nil {
-		return nil, err
-	}
-
 	publicKey, err := p.GetPublicKey()
 	if err != nil {
 		return nil, err
@@ -83,10 +77,6 @@ func (p *Provider) ValidateSubscriberToken(
 func (p *Provider) IssueSubscriberToken(
 	subscriberId string,
 ) (*string, error) {
-	if err := p.assertInitialized(); err != nil {
-		return nil, err
-	}
-
 	var mutation gql.IssueSubscriberToken
 	err := p.secretClient().Mutate(
 		context.Background(),
@@ -103,20 +93,7 @@ func (p *Provider) IssueSubscriberToken(
 }
 
 // Sync syncs the provider with the backend
-func (p *Provider) Sync(ctx context.Context) error {
-	p.Println("Syncing provider")
-
-	if p.initialized {
-		p.Println("Provider already initialized")
-		return ErrProviderAlreadyInitialized
-	}
-
-	// Attempt to connect to backend services
-	p.Client = gql.CreateGraphQLClient(p.ApiUrl)
-	if p.Client == nil {
-		return ErrFailedToCreateClient
-	}
-
+func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) error {
 	var query gql.GetProviderProfile
 	// Ask client for provider profile
 	err := p.Client.Query(
@@ -131,54 +108,59 @@ func (p *Provider) Sync(ctx context.Context) error {
 	p.RemoteProfile = &query
 	p.Uuid = query.ProviderSelf.Uuid
 
-	// Sync script groups
-	existingScriptGroups := make(map[string]*gql.RemoteScriptGroup)
-	for _, remoteScriptGroup := range query.ProviderSelf.ScriptGroups {
-		existingScriptGroups[remoteScriptGroup.AltID] = &remoteScriptGroup
+	// update provider
+	var mutation gql.EditProviderProfile
+	if err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"alt_id":          profile.AltID,
+		"category":        profile.Category,
+		"name":            profile.Name,
+		"description":     profile.Description,
+		"logo":            profile.LogoUrl,
+		"url":             profile.Url,
+		"color":           profile.Color,
+		"public":          profile.Public,
+		"account_service": profile.AccountService,
+	}); err != nil {
+		log.Panicf("failed to update provider: %s", err.Error())
 	}
 
-	scriptGroupsSeen := make(map[string]bool)
-	for _, sg := range p.ScriptGroups {
-		if _, ok := scriptGroupsSeen[sg.Profile.AltID]; ok {
-			sg.Println("Script group exists and has already been seen")
-			continue
-		} else {
-			sg.Println("Syncing script group")
-		}
+	return nil
+}
 
-		sg.Provider = p
-		scriptGroupsSeen[sg.Profile.AltID] = true
-
-		sg.Sync(ctx, existingScriptGroups[sg.Profile.AltID])
+// / Read reads the provider profile
+func (p *Provider) Read(ctx context.Context) (*gql.ProviderProfile, error) {
+	var query gql.GetProviderProfile
+	err := p.Client.Query(
+		ctx,
+		&query,
+		nil,
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, rsg := range query.ProviderSelf.ScriptGroups {
-		if _, ok := scriptGroupsSeen[rsg.AltID]; !ok {
-			p.Printf("Script group %s has been abandoned", rsg.AltID)
+	return &query.ProviderSelf, nil
+}
 
-			var mutation gql.EditScriptGroup
-			err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-				"id":     rsg.Uuid,
-				"public": false,
-			})
-
-			if err != nil {
-				panic("failed to abandon script group: " + err.Error())
-			}
-		}
+// / SetPublic sets the provider to public or private
+func (p *Provider) SetPublic(ctx context.Context, public bool) error {
+	var mutation gql.EditProviderProfile
+	err := p.Client.Mutate(
+		ctx,
+		&mutation,
+		map[string]interface{}{
+			"public": public,
+		},
+	)
+	if err != nil {
+		return err
 	}
-
-	p.Println("Provider synced")
 
 	return nil
 }
 
 // GetPublicKey returns the public key of the provider
 func (p *Provider) GetPublicKey() (*string, error) {
-	if err := p.assertInitialized(); err != nil {
-		return nil, err
-	}
-
 	if p.publicKey != nil {
 		return p.publicKey, nil
 	}
@@ -197,18 +179,17 @@ func (p *Provider) GetPublicKey() (*string, error) {
 	return p.publicKey, nil
 }
 
-func (p *Provider) Printf(format string, a ...interface{}) {
-	log.Printf(fmt.Sprintf("[%s] %s", p.Profile.AltID, format), a...)
+func (p *ProviderProfileInput) Printf(format string, a ...interface{}) {
+	log.Printf(fmt.Sprintf("[%s] %s", p.AltID, format), a...)
 }
 
-func (p *Provider) Println(a ...interface{}) {
-	log.Println(fmt.Sprintf("[%s]", p.Profile.AltID), a)
+func (p *ProviderProfileInput) Println(a ...interface{}) {
+	log.Println(fmt.Sprintf("[%s]", p.AltID), a)
 }
 
 func InitializeProvider(
 	ctx context.Context,
 	config ProviderConfig,
-	providerProfile ProviderProfileInput,
 ) (*Provider, error) {
 	if config.Url == nil {
 		apiUrlEnv, success := os.LookupEnv(environment.ApiUrlEnvVar)
@@ -234,25 +215,18 @@ func InitializeProvider(
 		config.SecretKey = &secretKeyEnv
 	}
 
-	// load from env
-	p := &Provider{
+	// Attempt to connect to backend services
+	client := gql.CreateGraphQLClient(*config.Url)
+	if client == nil {
+		return nil, ErrFailedToCreateClient
+	}
+
+	return &Provider{
 		ApiKey:    *config.ApiKey,
 		SecretKey: *config.SecretKey,
 		ApiUrl:    *config.Url,
-		Profile:   providerProfile,
-	}
-
-	// Attempt to load from env if not provided
-	if err := p.localInitialize(); err != nil {
-		return nil, err
-	}
-
-	// Attempt to connect to backend service
-	if err := p.Sync(ctx); err != nil {
-		return nil, err
-	}
-
-	return p, nil
+		Client:    client,
+	}, nil
 }
 
 // secretClient returns a client with the provider's secret key
@@ -265,43 +239,15 @@ func (p *Provider) secretClient() *graphql.Client {
 
 }
 
-// / Loads the provider secrets if they are not provided
-func (p *Provider) localInitialize() error {
-	p.Println("Initializing provider")
-
-	if p.initialized {
-		p.Println("Provider already initialized")
-		return ErrProviderAlreadyInitialized
+func (p *Provider) ScriptGroup(alt_id string) *ScriptGroup {
+	return &ScriptGroup{
+		AltID:    alt_id,
+		Provider: p,
 	}
-
-	p.ScriptGroups = make([]*ScriptGroup, 0)
-	for _, scriptGroupInput := range p.Profile.ScriptGroups {
-		scriptGroup := &ScriptGroup{
-			Provider: p,
-			Profile:  scriptGroupInput,
-			Scripts:  make([]Script, 0),
-		}
-
-		for _, script := range scriptGroupInput.Scripts {
-			scriptGroup.Scripts = append(scriptGroup.Scripts, Script{
-				ScriptGroup: scriptGroup,
-				Profile:     script,
-			})
-		}
-
-		p.ScriptGroups = append(p.ScriptGroups, scriptGroup)
-	}
-
-	p.initialized = true
-	p.Println("Provider initialized")
-
-	return nil
 }
 
-func (p *Provider) assertInitialized() error {
-	if !p.initialized {
-		return ErrProviderNotInitialized
+func (p *Provider) Script(script_group_uuid string, script_alt_id string) *Script {
+	return &Script{
+		
 	}
-
-	return nil
 }
