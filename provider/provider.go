@@ -20,7 +20,7 @@ type Provider struct {
 	SecretKey     string
 	ApiKey        string
 	ApiUrl        string
-	RemoteProfile *gql.GetProviderProfile
+
 	publicKey     *string
 
 	Client *graphql.Client
@@ -93,7 +93,7 @@ func (p *Provider) IssueSubscriberToken(
 }
 
 // Sync syncs the provider with the backend
-func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) error {
+func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) (*uuid.UUID, error) {
 	var query gql.GetProviderProfile
 	// Ask client for provider profile
 	err := p.Client.Query(
@@ -102,10 +102,9 @@ func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) err
 		nil,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	p.RemoteProfile = &query
 	p.Uuid = query.ProviderSelf.Uuid
 
 	// update provider
@@ -124,7 +123,7 @@ func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) err
 		log.Panicf("failed to update provider: %s", err.Error())
 	}
 
-	return nil
+	return &mutation.Provider.Edit.Uuid, nil
 }
 
 // / Read reads the provider profile
@@ -247,7 +246,5 @@ func (p *Provider) ScriptGroup(alt_id string) *ScriptGroup {
 }
 
 func (p *Provider) Script(script_group_uuid string, script_alt_id string) *Script {
-	return &Script{
-		
-	}
+	return &Script{}
 }
