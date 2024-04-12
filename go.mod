@@ -8,7 +8,4 @@ require (
 	github.com/hasura/go-graphql-client v0.12.1
 )
 
-require (
-	github.com/hashicorp/terraform-plugin-framework-validators v0.12.0 // indirect
-	nhooyr.io/websocket v1.8.10 // indirect
-)
+require nhooyr.io/websocket v1.8.10 // indirect
