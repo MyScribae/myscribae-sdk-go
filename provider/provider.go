@@ -8,20 +8,20 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Pritch009/myscribae-sdk-go/environment"
-	"github.com/Pritch009/myscribae-sdk-go/gql"
+	"github.com/MyScribae/myscribae-sdk-go/environment"
+	"github.com/MyScribae/myscribae-sdk-go/gql"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hasura/go-graphql-client"
 )
 
 type Provider struct {
-	Uuid          uuid.UUID
-	SecretKey     string
-	ApiKey        string
-	ApiUrl        string
+	Uuid      uuid.UUID
+	SecretKey string
+	ApiKey    string
+	ApiUrl    string
 
-	publicKey     *string
+	publicKey *string
 
 	Client *graphql.Client
 }

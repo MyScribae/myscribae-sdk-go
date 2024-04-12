@@ -3,7 +3,7 @@ package myscribae_sdk
 import (
 	"context"
 
-	"github.com/Pritch009/myscribae-sdk-go/provider"
+	"github.com/MyScribae/myscribae-sdk-go/provider"
 )
 
 func NewProvider(config provider.ProviderConfig) (*provider.Provider, error) {
