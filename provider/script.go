@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 
-	"github.com/MyScribae/myscribae-sdk-go/gql"
+	"github.com/myscribae/myscribae-sdk-go/gql"
 	"github.com/google/uuid"
 )
 

@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/MyScribae/myscribae-sdk-go/environment"
-	"github.com/MyScribae/myscribae-sdk-go/gql"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hasura/go-graphql-client"
+	"github.com/myscribae/myscribae-sdk-go/environment"
+	"github.com/myscribae/myscribae-sdk-go/gql"
 )
 
 type Provider struct {

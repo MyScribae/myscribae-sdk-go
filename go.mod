@@ -1,4 +1,4 @@
-module github.com/MyScribae/myscribae-sdk-go
+module github.com/myscribae/myscribae-sdk-go
 
 go 1.22
 
