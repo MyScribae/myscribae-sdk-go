@@ -16,10 +16,11 @@ import (
 )
 
 type Provider struct {
+	ApiUrl string
+
 	Uuid      uuid.UUID
-	SecretKey string
-	ApiKey    string
-	ApiUrl    string
+	SecretKey *string
+	ApiKey    *string
 
 	publicKey *string
 
@@ -29,11 +30,12 @@ type Provider struct {
 type ProviderConfig struct {
 	ApiKey    *string
 	SecretKey *string
-	Url       *string
+	ApiToken  *string
+	ApiUrl    *string
 }
 
 type ProviderProfileInput struct {
-	AltID          string  `json:"alt_id"`
+	AltID          *string `json:"alt_id"`
 	Name           string  `json:"name"`
 	Category       *string `json:"category"`
 	Description    string  `json:"description"`
@@ -54,11 +56,52 @@ var (
 	ErrFailedToCreateClient       = errors.New("failed to create graphql client")
 )
 
+func CreateNewProvider(ctx context.Context, client *graphql.Client, input *ProviderProfileInput) (*Provider, error) {
+	if client == nil {
+		return nil, ErrFailedToCreateClient
+	}
+
+	var mutation gql.CreateNewProvider
+	err := client.Mutate(
+		ctx,
+		&mutation,
+		map[string]interface{}{
+			"alt_id":          input.AltID,
+			"category":        input.Category,
+			"name":            input.Name,
+			"description":     input.Description,
+			"logo":            input.LogoUrl,
+			"url":             input.Url,
+			"color":           input.Color,
+			"public":          input.Public,
+			"account_service": input.AccountService,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Created provider, return provider
+	prov := &Provider{
+		Uuid:   mutation.Providers.Create.Uuid,
+		Client: client,
+	}
+
+	// get secret key and api key
+	err = prov.ResetProviderKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return prov, nil
+}
+
 // ValidateSubscriberToken validates a subscriber token
 func (p *Provider) ValidateSubscriberToken(
+	ctx context.Context,
 	token string,
 ) (*SubscriberToken, error) {
-	publicKey, err := p.GetPublicKey()
+	publicKey, err := p.GetPublicKey(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -94,22 +137,10 @@ func (p *Provider) IssueSubscriberToken(
 
 // Sync syncs the provider with the backend
 func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) (*uuid.UUID, error) {
-	var query gql.GetProviderProfile
-	// Ask client for provider profile
-	err := p.Client.Query(
-		context.Background(),
-		&query,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	p.Uuid = query.ProviderSelf.Uuid
-
 	// update provider
 	var mutation gql.EditProviderProfile
 	if err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"provider_id":     p.Uuid,
 		"alt_id":          profile.AltID,
 		"category":        profile.Category,
 		"name":            profile.Name,
@@ -132,13 +163,15 @@ func (p *Provider) Read(ctx context.Context) (*gql.ProviderProfile, error) {
 	err := p.Client.Query(
 		ctx,
 		&query,
-		nil,
+		map[string]interface{}{
+			"provider_id": p.Uuid,
+		},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &query.ProviderSelf, nil
+	return &query.Provider, nil
 }
 
 // / SetPublic sets the provider to public or private
@@ -148,6 +181,7 @@ func (p *Provider) SetPublic(ctx context.Context, public bool) error {
 		ctx,
 		&mutation,
 		map[string]interface{}{
+			"provider_id": p.Uuid,
 			"public": public,
 		},
 	)
@@ -159,16 +193,18 @@ func (p *Provider) SetPublic(ctx context.Context, public bool) error {
 }
 
 // GetPublicKey returns the public key of the provider
-func (p *Provider) GetPublicKey() (*string, error) {
+func (p *Provider) GetPublicKey(ctx context.Context) (*string, error) {
 	if p.publicKey != nil {
 		return p.publicKey, nil
 	}
 
 	var query gql.GetPublicKey
 	err := p.secretClient().Query(
-		context.Background(),
+		ctx,
 		&query,
-		nil,
+		map[string]interface{}{
+			"provider_id": p.Uuid,
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -179,23 +215,23 @@ func (p *Provider) GetPublicKey() (*string, error) {
 }
 
 func (p *ProviderProfileInput) Printf(format string, a ...interface{}) {
-	log.Printf(fmt.Sprintf("[%s] %s", p.AltID, format), a...)
+	log.Printf(fmt.Sprintf("[%v] %s", p.AltID, format), a...)
 }
 
 func (p *ProviderProfileInput) Println(a ...interface{}) {
-	log.Println(fmt.Sprintf("[%s]", p.AltID), a)
+	log.Println(fmt.Sprintf("[%v]", p.AltID), a)
 }
 
 func InitializeProvider(
 	ctx context.Context,
 	config ProviderConfig,
 ) (*Provider, error) {
-	if config.Url == nil {
+	if config.ApiUrl == nil {
 		apiUrlEnv, success := os.LookupEnv(environment.ApiUrlEnvVar)
 		if !success {
 			return nil, ErrMissingApiUrl
 		}
-		config.Url = &apiUrlEnv
+		config.ApiUrl = &apiUrlEnv
 	}
 
 	if config.ApiKey == nil {
@@ -215,27 +251,40 @@ func InitializeProvider(
 	}
 
 	// Attempt to connect to backend services
-	client := gql.CreateGraphQLClient(*config.Url)
+	client := gql.CreateGraphQLClient(*config.ApiUrl, nil)
 	if client == nil {
 		return nil, ErrFailedToCreateClient
 	}
 
 	return &Provider{
-		ApiKey:    *config.ApiKey,
-		SecretKey: *config.SecretKey,
-		ApiUrl:    *config.Url,
-		Client:    client,
+		ApiKey:    config.ApiKey,
+		SecretKey: config.SecretKey,
+		ApiUrl:    *config.ApiUrl,
+		Client: client.WithRequestModifier(
+			func(r *http.Request) {
+				if config.ApiKey != nil {
+					r.Header.Set("X-MyScribae-ApiKey", *config.ApiKey)
+				}
+				if config.ApiToken != nil {
+					r.Header.Set("X-MyScribae-ApiToken", *config.ApiToken)
+				}
+			},
+		),
 	}, nil
 }
 
 // secretClient returns a client with the provider's secret key
 func (p *Provider) secretClient() *graphql.Client {
-	return p.Client.WithRequestModifier(
-		func(r *http.Request) {
-			r.Header.Set("X-MyScribae-ApiKey", p.ApiKey)
-		},
-	)
+	client := p.Client
+	if p.SecretKey != nil {
+		client = p.Client.WithRequestModifier(
+			func(r *http.Request) {
+				r.Header.Set("X-MyScribae-SecretKey", *p.SecretKey)
+			},
+		)
+	}
 
+	return client
 }
 
 func (p *Provider) ScriptGroup(alt_id string) *ScriptGroup {
@@ -247,4 +296,20 @@ func (p *Provider) ScriptGroup(alt_id string) *ScriptGroup {
 
 func (p *Provider) Script(script_group_uuid string, script_alt_id string) *Script {
 	return &Script{}
+}
+
+func (p *Provider) ResetProviderKeys(ctx context.Context) error {
+	var mutation gql.ResetProviderKeys
+	err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"providerId": p.Uuid,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	p.ApiKey = &mutation.ProviderSelf.Keys.Reset.ApiKey
+	p.SecretKey = &mutation.ProviderSelf.Keys.Reset.SecretKey
+
+	return nil
 }

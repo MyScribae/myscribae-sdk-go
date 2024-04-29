@@ -16,6 +16,7 @@ const (
 
 func CreateGraphQLClient(
 	graphqlUrl string,
+	apiToken *string,
 ) *graphql.Client {
 	httpClient := &http.Client{
 		Timeout: 5 * time.Second,
@@ -25,8 +26,18 @@ func CreateGraphQLClient(
 		MaxIdleConnsPerHost: 100,
 	}
 
-	return graphql.NewClient(
+	client := graphql.NewClient(
 		graphqlUrl,
 		httpClient,
 	)
+
+	if apiToken != nil {
+		client = client.WithRequestModifier(
+			func(r *http.Request) {
+				r.Header.Set("X-MyScribae-ApiToken", *apiToken)
+			},
+		)
+	}
+
+	return client
 }

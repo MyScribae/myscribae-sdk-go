@@ -3,8 +3,8 @@ package provider
 import (
 	"context"
 
-	"github.com/myscribae/myscribae-sdk-go/gql"
 	"github.com/google/uuid"
+	"github.com/myscribae/myscribae-sdk-go/gql"
 )
 
 type Script struct {
@@ -28,6 +28,7 @@ type ScriptInput struct {
 func (s *Script) Create(ctx context.Context, input ScriptInput) (*uuid.UUID, error) {
 	var mutation gql.CreateNewScript
 	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"provider_id":        s.Provider.Uuid,
 		"script_group_id":    s.ScriptGroupUuid,
 		"alt_id":             input.AltID,
 		"name":               input.Name,
@@ -40,7 +41,6 @@ func (s *Script) Create(ctx context.Context, input ScriptInput) (*uuid.UUID, err
 	})
 
 	if err != nil {
-
 		return nil, err
 	}
 

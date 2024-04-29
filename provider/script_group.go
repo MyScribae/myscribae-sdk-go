@@ -22,6 +22,7 @@ type ScriptGroupInput struct {
 func (sg *ScriptGroup) Update(ctx context.Context, profile ScriptGroupInput) (*uuid.UUID, error) {
 	var mutation gql.EditScriptGroup
 	err := sg.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"provider_id": sg.Provider.Uuid,
 		"id":          sg.AltID,
 		"name":        profile.Name,
 		"description": profile.Description,
