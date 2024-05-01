@@ -49,6 +49,7 @@ type CreateProviderProfileInput struct {
 }
 
 type UpdateProviderProfileInput struct {
+	AltID          *string `json:"alt_id"`
 	Name           *string `json:"name"`
 	Category       *string `json:"category"`
 	Description    *string `json:"description"`
