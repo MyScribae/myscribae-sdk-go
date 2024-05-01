@@ -160,7 +160,7 @@ func (p *Provider) Update(ctx context.Context, profile UpdateProviderProfileInpu
 	// update provider
 	var mutation gql.EditProviderProfile
 	if err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"id":      p.Uuid,
+		"id":      p.Uuid.String(),
 		"changes": string(changes),
 	}); err != nil {
 		log.Panicf("failed to update provider: %s", err.Error())
@@ -176,7 +176,7 @@ func (p *Provider) Read(ctx context.Context) (*gql.ProviderProfile, error) {
 		ctx,
 		&query,
 		map[string]interface{}{
-			"provider_id": p.Uuid,
+			"provider_id": p.Uuid.String(),
 		},
 	)
 	if err != nil {
@@ -206,7 +206,7 @@ func (p *Provider) GetPublicKey(ctx context.Context) (*string, error) {
 		ctx,
 		&query,
 		map[string]interface{}{
-			"provider_id": p.Uuid,
+			"provider_id": p.Uuid.String(),
 		},
 	)
 	if err != nil {
@@ -304,7 +304,7 @@ func (p *Provider) Script(script_group_uuid string, script_alt_id string) *Scrip
 func (p *Provider) ResetProviderKeys(ctx context.Context) error {
 	var mutation gql.ResetProviderKeys
 	err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"providerId": p.Uuid,
+		"providerId": p.Uuid.String(),
 	})
 
 	if err != nil {
@@ -320,6 +320,10 @@ func (p *Provider) ResetProviderKeys(ctx context.Context) error {
 func (pi *UpdateProviderProfileInput) MarshalJSON() ([]byte, error) {
 	// only marshal provided fields, ignore nil fields
 	data := make(map[string]interface{})
+	if pi.AltID != nil {
+		data["alt_id"] = *pi.AltID
+	}
+
 	if pi.Name != nil {
 		data["name"] = *pi.Name
 	}

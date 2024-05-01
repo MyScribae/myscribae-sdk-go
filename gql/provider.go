@@ -34,21 +34,21 @@ type RemoteScriptGroup struct {
 }
 
 type GetProviderProfile struct {
-	Provider ProviderProfile `graphql:"provider(id: $provider_id)"`
+	Provider ProviderProfile `graphql:"provider(id:$provider_id)"`
 }
 
 type EditProviderProfile struct {
 	Provider struct {
 		Edit struct {
 			Uuid uuid.UUID
-		} `graphql:"edit(changes: $changes)"`
-	} `graphql:"provider(id: $id)"`
+		} `graphql:"edit(changes:$changes)"`
+	} `graphql:"provider(id:$id)"`
 }
 
 type GetScriptGroup struct {
 	Provider struct {
-		ScriptGroup ScriptGroupProfile `graphql:"script_group(id: $id)"`
-	} `graphql:"provider(id: $provider_id)"`
+		ScriptGroup ScriptGroupProfile `graphql:"script_group(id:$id)"`
+	} `graphql:"provider(id:$provider_id)"`
 }
 
 type ScriptGroupProfile struct {
