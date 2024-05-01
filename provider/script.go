@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/myscribae/myscribae-sdk-go/gql"
@@ -14,7 +15,7 @@ type Script struct {
 	Provider        *Provider
 }
 
-type ScriptInput struct {
+type CreateScriptInput struct {
 	AltID            string `json:"alt_id"`
 	Name             string `json:"name"`
 	Description      string `json:"description"`
@@ -25,7 +26,16 @@ type ScriptInput struct {
 	Public           bool   `json:"public"`
 }
 
-func (s *Script) Create(ctx context.Context, input ScriptInput) (*uuid.UUID, error) {
+type UpdateScriptInput struct {
+	Name             *string `json:"name"`
+	Description      *string `json:"description"`
+	PriceInCents     *int    `json:"price_in_cents"`
+	SlaSec           *int    `json:"sla_sec"`
+	TokenLifetimeSec *int    `json:"token_lifetime_sec"`
+	Public           *bool   `json:"public"`
+}
+
+func (s *Script) Create(ctx context.Context, input CreateScriptInput) (*uuid.UUID, error) {
 	var mutation gql.CreateNewScript
 	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
 		"provider_id":        s.Provider.Uuid,
@@ -62,19 +72,17 @@ func (s *Script) Read(ctx context.Context) (*gql.ScriptProfile, error) {
 	return &query.Provider.ScriptGroup.Script, nil
 }
 
-func (s *Script) Update(ctx context.Context, input ScriptInput) (*uuid.UUID, error) {
+func (s *Script) Update(ctx context.Context, input UpdateScriptInput) (*uuid.UUID, error) {
+	changes, err := input.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
 	var mutation gql.EditScript
-	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"script_group_id":    s.ScriptGroupUuid,
-		"id":                 s.AltID,
-		"alt_id":             input.AltID,
-		"name":               input.Name,
-		"description":        input.Description,
-		"recurrence":         input.Recurrence,
-		"price_in_cents":     input.PriceInCents,
-		"sla_sec":            input.SlaSec,
-		"token_lifetime_sec": input.TokenLifetimeSec,
-		"public":             input.Public,
+	err = s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"script_group_id": s.ScriptGroupUuid,
+		"id":              s.AltID,
+		"changes":         string(changes),
 	})
 	if err != nil {
 		panic("failed to update script: " + err.Error())
@@ -96,4 +104,35 @@ func (s *Script) Delete(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (si *UpdateScriptInput) MarshalJSON() ([]byte, error) {
+	// marshal as a map, not including optional fields if they are not set
+	m := map[string]interface{}{}
+
+	if si.Name != nil {
+		m["name"] = *si.Name
+	}
+
+	if si.Description != nil {
+		m["description"] = *si.Description
+	}
+
+	if si.PriceInCents != nil {
+		m["price_in_cents"] = *si.PriceInCents
+	}
+
+	if si.SlaSec != nil {
+		m["sla_sec"] = *si.SlaSec
+	}
+
+	if si.TokenLifetimeSec != nil {
+		m["token_lifetime_sec"] = *si.TokenLifetimeSec
+	}
+
+	if si.Public != nil {
+		m["public"] = *si.Public
+	}
+
+	return json.Marshal(m)
 }

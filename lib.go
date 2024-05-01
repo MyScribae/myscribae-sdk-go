@@ -15,8 +15,8 @@ func NewProvider(config provider.ProviderConfig) (*provider.Provider, error) {
 
 type Provider = provider.Provider
 type ProviderConfig = provider.ProviderConfig
-type ProviderProfileInput = provider.ProviderProfileInput
+type ProviderProfileInput = provider.CreateProviderProfileInput
 type ScriptGroup = provider.ScriptGroup
-type ScriptGroupInput = provider.ScriptGroupInput
+type ScriptGroupInput = provider.CreateScriptGroupInput
 type Script = provider.Script
-type ScriptInput = provider.ScriptInput
+type ScriptInput = provider.CreateScriptInput

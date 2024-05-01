@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -34,7 +35,7 @@ type ProviderConfig struct {
 	ApiUrl    *string
 }
 
-type ProviderProfileInput struct {
+type CreateProviderProfileInput struct {
 	AltID          *string `json:"alt_id"`
 	Name           string  `json:"name"`
 	Category       *string `json:"category"`
@@ -47,6 +48,18 @@ type ProviderProfileInput struct {
 	AccountService bool    `json:"account_service"`
 }
 
+type UpdateProviderProfileInput struct {
+	Name           *string `json:"name"`
+	Category       *string `json:"category"`
+	Description    *string `json:"description"`
+	LogoUrl        *string `json:"logo_url"`
+	BannerUrl      *string `json:"banner_url"`
+	Url            *string `json:"url"`
+	Color          *string `json:"color"`
+	Public         *bool   `json:"public"`
+	AccountService *bool   `json:"account_service"`
+}
+
 var (
 	ErrProviderAlreadyInitialized = errors.New("provider already initialized")
 	ErrProviderNotInitialized     = errors.New("provider not initialized")
@@ -56,7 +69,7 @@ var (
 	ErrFailedToCreateClient       = errors.New("failed to create graphql client")
 )
 
-func CreateNewProvider(ctx context.Context, client *graphql.Client, input *ProviderProfileInput) (*Provider, error) {
+func CreateNewProvider(ctx context.Context, client *graphql.Client, input *CreateProviderProfileInput) (*Provider, error) {
 	if client == nil {
 		return nil, ErrFailedToCreateClient
 	}
@@ -136,20 +149,18 @@ func (p *Provider) IssueSubscriberToken(
 }
 
 // Sync syncs the provider with the backend
-func (p *Provider) Update(ctx context.Context, profile ProviderProfileInput) (*uuid.UUID, error) {
+func (p *Provider) Update(ctx context.Context, profile UpdateProviderProfileInput) (*uuid.UUID, error) {
+	var changes []byte
+	changes, err := profile.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
 	// update provider
 	var mutation gql.EditProviderProfile
 	if err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"provider_id":     p.Uuid,
-		"alt_id":          profile.AltID,
-		"category":        profile.Category,
-		"name":            profile.Name,
-		"description":     profile.Description,
-		"logo":            profile.LogoUrl,
-		"url":             profile.Url,
-		"color":           profile.Color,
-		"public":          profile.Public,
-		"account_service": profile.AccountService,
+		"id":      p.Uuid,
+		"changes": string(changes),
 	}); err != nil {
 		log.Panicf("failed to update provider: %s", err.Error())
 	}
@@ -176,20 +187,11 @@ func (p *Provider) Read(ctx context.Context) (*gql.ProviderProfile, error) {
 
 // / SetPublic sets the provider to public or private
 func (p *Provider) SetPublic(ctx context.Context, public bool) error {
-	var mutation gql.EditProviderProfile
-	err := p.Client.Mutate(
-		ctx,
-		&mutation,
-		map[string]interface{}{
-			"provider_id": p.Uuid,
-			"public": public,
-		},
-	)
-	if err != nil {
-		return err
-	}
+	_, err := p.Update(ctx, UpdateProviderProfileInput{
+		Public: &public,
+	})
 
-	return nil
+	return err
 }
 
 // GetPublicKey returns the public key of the provider
@@ -214,11 +216,11 @@ func (p *Provider) GetPublicKey(ctx context.Context) (*string, error) {
 	return p.publicKey, nil
 }
 
-func (p *ProviderProfileInput) Printf(format string, a ...interface{}) {
+func (p *CreateProviderProfileInput) Printf(format string, a ...interface{}) {
 	log.Printf(fmt.Sprintf("[%v] %s", p.AltID, format), a...)
 }
 
-func (p *ProviderProfileInput) Println(a ...interface{}) {
+func (p *CreateProviderProfileInput) Println(a ...interface{}) {
 	log.Println(fmt.Sprintf("[%v]", p.AltID), a)
 }
 
@@ -312,4 +314,46 @@ func (p *Provider) ResetProviderKeys(ctx context.Context) error {
 	p.SecretKey = &mutation.ProviderSelf.Keys.Reset.SecretKey
 
 	return nil
+}
+
+func (pi *UpdateProviderProfileInput) MarshalJSON() ([]byte, error) {
+	// only marshal provided fields, ignore nil fields
+	data := make(map[string]interface{})
+	if pi.Name != nil {
+		data["name"] = *pi.Name
+	}
+
+	if pi.Category != nil {
+		data["category"] = *pi.Category
+	}
+
+	if pi.Description != nil {
+		data["description"] = *pi.Description
+	}
+
+	if pi.LogoUrl != nil {
+		data["logo"] = *pi.LogoUrl
+	}
+
+	if pi.BannerUrl != nil {
+		data["banner"] = *pi.BannerUrl
+	}
+
+	if pi.Url != nil {
+		data["url"] = *pi.Url
+	}
+
+	if pi.Color != nil {
+		data["color"] = *pi.Color
+	}
+
+	if pi.Public != nil {
+		data["public"] = *pi.Public
+	}
+
+	if pi.AccountService != nil {
+		data["account_service"] = *pi.AccountService
+	}
+
+	return json.Marshal(data)
 }

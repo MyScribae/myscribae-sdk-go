@@ -41,8 +41,8 @@ type EditProviderProfile struct {
 	Provider struct {
 		Edit struct {
 			Uuid uuid.UUID
-		} `graphql:"edit(alt_id: $alt_id, name: $name, category: $category, description: $description, logo: $logo, url: $url, color: $color, public: $public)"`
-	} `graphql:"provider(id: $provider_id)"`
+		} `graphql:"edit(changes: $changes)"`
+	} `graphql:"provider(id: $id)"`
 }
 
 type GetScriptGroup struct {
@@ -64,17 +64,17 @@ type EditScriptGroup struct {
 		ScriptGroup struct {
 			Edit struct {
 				Uuid uuid.UUID
-			} `graphql:"edit(name: $name, description: $description, public: $public)"`
-		} `graphql:"script_group(id: $id)"`
-	} `graphql:"provider(id: $provider_id)"`
+			} `graphql:"edit(changes:$changes"`
+		} `graphql:"script_group(id:$id)"`
+	} `graphql:"provider(id:$provider_id)"`
 }
 
 type GetScript struct {
 	Provider struct {
 		ScriptGroup struct {
-			Script ScriptProfile `graphql:"script(id: $id)"`
-		} `graphql:"script_group(id: $script_group_id)"`
-	} `graphql:"provider(id: $provider_id)"`
+			Script ScriptProfile `graphql:"script(id:$id)"`
+		} `graphql:"script_group(id:$script_group_id)"`
+	} `graphql:"provider(id:$provider_id)"`
 }
 
 type ScriptProfile struct {
@@ -95,23 +95,23 @@ type EditScript struct {
 			Script struct {
 				Edit struct {
 					Uuid uuid.UUID
-				} `graphql:"edit(name: $name, description: $description, price_in_cents: $price_in_cents, sla_sec: $sla_sec, token_lifetime_sec: $token_lifetime_sec, public: $public)"`
-			} `graphql:"script(id: $id)"`
-		} `graphql:"script_group(id: $script_group_uuid)"`
-	} `graphql:"provider(id: $provider_id)"`
+				} `graphql:"edit(changes:$changes)"`
+			} `graphql:"script(id:$id)"`
+		} `graphql:"script_group(id:$script_group_uuid)"`
+	} `graphql:"provider(id:$provider_id)"`
 }
 
 type IssueSubscriberToken struct {
 	Provider struct {
 		Tokens struct {
-			Issue string `graphql:"issue(subscriber_id: $subscriber_id)"`
+			Issue string `graphql:"issue(subscriber_id:$subscriber_id)"`
 		}
 	}
 }
 
 type RequestUserAssociation struct {
 	Provider struct {
-		Associate uuid.UUID `graphql:"associate(user_identifier: $user_identifier, user_avatar_url: $user_avatar_url, script_credits: $script_credits, redirect: $redirect)"`
+		Associate uuid.UUID `graphql:"associate(user_identifier:$user_identifier, user_avatar_url: $user_avatar_url, script_credits: $script_credits, redirect: $redirect)"`
 	}
 }
 
