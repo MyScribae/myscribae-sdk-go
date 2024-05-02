@@ -48,9 +48,9 @@ func TestCreateAndEditScriptGroup(t *testing.T) {
 
 		// edit the test script group
 		var (
-			newName 	  = "Test Script Group - Edited"
+			newName        = "Test Script Group - Edited"
 			newDescription = "This is a test script group - edited"
-			newPublic 	  = false
+			newPublic      = false
 		)
 
 		_, err = sg.Update(ctx, provider.UpdateScriptGroupInput{
@@ -80,6 +80,11 @@ func TestCreateAndEditScriptGroup(t *testing.T) {
 
 		if groupDataNew.Public != newPublic {
 			return fmt.Errorf("script group public is incorrect")
+		}
+
+		err = sg.Delete(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to delete script group: %v", err)
 		}
 
 		return nil

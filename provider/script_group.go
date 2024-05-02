@@ -81,6 +81,14 @@ func (sg *ScriptGroup) Create(ctx context.Context, profile CreateScriptGroupInpu
 	return sg.Uuid, nil
 }
 
+func (sg *ScriptGroup) Delete(ctx context.Context) error {
+	var public = false
+	_, err := sg.Update(ctx, UpdateScriptGroupInput{
+		Public: &public,
+	})
+	return err
+}
+
 func (sgi *UpdateScriptGroupInput) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
 
