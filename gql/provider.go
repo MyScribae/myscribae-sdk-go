@@ -5,19 +5,18 @@ import (
 )
 
 type ProviderProfile struct {
-	Uuid           uuid.UUID
-	AltID          *string
-	Category       string
-	Name           string
-	Description    string
-	AccountTier    *string
-	Color          *string
-	LogoUrl        *string
-	BannerUrl      *string
-	MyRole         *string
-	Url            *string
-	AccountService bool
-	Public         bool
+	Uuid           uuid.UUID `graphql:"uuid"`
+	AltID          *string   `graphql:"alt_id"`
+	Category       string    `graphql:"category"`
+	Name           string    `graphql:"name"`
+	Description    string    `graphql:"description"`
+	Color          *string   `graphql:"color"`
+	LogoUrl        *string   `graphql:"logo_url"`
+	BannerUrl      *string   `graphql:"banner_url"`
+	MyRole         *string   `graphql:"my_role"`
+	Url            *string   `graphql:"url"`
+	AccountService bool      `graphql:"account_service"`
+	Public         bool      `graphql:"public"`
 }
 
 type RemoteScript struct {
@@ -34,7 +33,7 @@ type RemoteScriptGroup struct {
 }
 
 type GetProviderProfile struct {
-	Provider ProviderProfile `graphql:"provider(id:$provider_id)"`
+	ProviderSelf ProviderProfile `graphql:"provider_self(id:$id)"`
 }
 
 type EditProviderProfile struct {
@@ -46,17 +45,17 @@ type EditProviderProfile struct {
 }
 
 type GetScriptGroup struct {
-	Provider struct {
+	ProviderSelf struct {
 		ScriptGroup ScriptGroupProfile `graphql:"script_group(id:$id)"`
-	} `graphql:"provider(id:$provider_id)"`
+	} `graphql:"provider_self(id:$provider_id)"`
 }
 
 type ScriptGroupProfile struct {
-	Uuid        uuid.UUID
-	AltID       string
-	Name        string
-	Description string
-	Public      bool
+	Uuid        uuid.UUID `graphql:"uuid"`
+	AltID       string    `graphql:"alt_id"`
+	Name        string    `graphql:"name"`
+	Description string    `graphql:"description"`
+	Public      bool      `graphql:"public"`
 }
 
 type EditScriptGroup struct {
@@ -64,29 +63,29 @@ type EditScriptGroup struct {
 		ScriptGroup struct {
 			Edit struct {
 				Uuid uuid.UUID
-			} `graphql:"edit(changes:$changes"`
+			} `graphql:"edit(changes:$changes)"`
 		} `graphql:"script_group(id:$id)"`
 	} `graphql:"provider(id:$provider_id)"`
 }
 
 type GetScript struct {
-	Provider struct {
+	ProviderSelf struct {
 		ScriptGroup struct {
 			Script ScriptProfile `graphql:"script(id:$id)"`
 		} `graphql:"script_group(id:$script_group_id)"`
-	} `graphql:"provider(id:$provider_id)"`
+	} `graphql:"provider_self(id:$provider_id)"`
 }
 
 type ScriptProfile struct {
-	Uuid             uuid.UUID
-	AltID            string
-	Name             string
-	Description      string
-	Recurrence       string
-	PriceInCents     int
-	SlaSec           int
-	TokenLifetimeSec int
-	Public           bool
+	Uuid             uuid.UUID `graphql:"uuid"`
+	AltID            string    `graphql:"alt_id"`
+	Name             string    `graphql:"name"`
+	Description      string    `graphql:"description"`
+	Recurrence       string    `graphql:"recurrence"`
+	PriceInCents     int       `graphql:"price_in_cents"`
+	SlaSec           int       `graphql:"sla_sec"`
+	TokenLifetimeSec int       `graphql:"token_lifetime_sec"`
+	Public           bool      `graphql:"public"`
 }
 
 type EditScript struct {
@@ -120,7 +119,7 @@ type GetPublicKey struct {
 		Keys struct {
 			PublicKey string
 		}
-	}
+	} `graphql:"provider_self(id:$provider_id)"`
 }
 
 type CreateNewScript struct {
@@ -141,19 +140,19 @@ type CreateNewScriptGroup struct {
 			Create struct {
 				Uuid uuid.UUID
 			} `graphql:"create(alt_id: $alt_id, name: $name, description: $description, public: $public)"`
-		}
+		} `graphql:"script_groups"`
 	} `graphql:"provider(id: $provider_id)"`
 }
 
 type ResetProviderKeys struct {
-	ProviderSelf struct {
+	Provider struct {
 		Keys struct {
 			Reset struct {
 				ApiKey    string `graphql:"api_key"`
 				SecretKey string `graphql:"secret_key"`
 			} `graphql:"reset"`
 		} `graphql:"keys"`
-	} `graphql:"provider"`
+	} `graphql:"provider(id:$provider_id)"`
 }
 
 type CreateNewProvider struct {

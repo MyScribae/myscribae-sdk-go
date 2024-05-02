@@ -68,8 +68,8 @@ func (s *Script) Read(ctx context.Context) (*gql.ScriptProfile, error) {
 		return nil, err
 	}
 
-	s.Uuid = &query.Provider.ScriptGroup.Script.Uuid
-	return &query.Provider.ScriptGroup.Script, nil
+	s.Uuid = &query.ProviderSelf.ScriptGroup.Script.Uuid
+	return &query.ProviderSelf.ScriptGroup.Script, nil
 }
 
 func (s *Script) Update(ctx context.Context, input UpdateScriptInput) (*uuid.UUID, error) {

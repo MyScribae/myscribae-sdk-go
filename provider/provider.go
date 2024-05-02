@@ -14,18 +14,32 @@ import (
 	"github.com/hasura/go-graphql-client"
 	"github.com/myscribae/myscribae-sdk-go/environment"
 	"github.com/myscribae/myscribae-sdk-go/gql"
+	"github.com/myscribae/myscribae-sdk-go/utilities"
 )
 
 type Provider struct {
 	ApiUrl string
 
 	Uuid      uuid.UUID
+	altId        *utilities.AltUUID
 	SecretKey *string
 	ApiKey    *string
 
 	publicKey *string
 
 	Client *graphql.Client
+}
+
+func (p *Provider) ID() utilities.AltUUID {
+	if p.altId == nil {
+		id, err := utilities.NewAltUUID(p.Uuid.String())
+		if err != nil {
+			log.Panicf("failed to create alt id: %s", err.Error())
+		}
+		p.altId = &id
+	}
+
+	return *p.altId
 }
 
 type ProviderConfig struct {
@@ -157,10 +171,16 @@ func (p *Provider) Update(ctx context.Context, profile UpdateProviderProfileInpu
 		return nil, err
 	}
 
+	id := p.Uuid.String()
+	altIdOrUuid, err := utilities.NewAltUUID(id)
+	if err != nil {
+		return nil, err
+	}
+
 	// update provider
 	var mutation gql.EditProviderProfile
 	if err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"id":      p.Uuid.String(),
+		"id":      altIdOrUuid,
 		"changes": string(changes),
 	}); err != nil {
 		log.Panicf("failed to update provider: %s", err.Error())
@@ -171,19 +191,24 @@ func (p *Provider) Update(ctx context.Context, profile UpdateProviderProfileInpu
 
 // / Read reads the provider profile
 func (p *Provider) Read(ctx context.Context) (*gql.ProviderProfile, error) {
+	id, err := utilities.NewAltUUID(p.Uuid.String())
+	if err != nil {
+		return nil, err
+	}
+
 	var query gql.GetProviderProfile
-	err := p.Client.Query(
+	err = p.Client.Query(
 		ctx,
 		&query,
 		map[string]interface{}{
-			"provider_id": p.Uuid.String(),
+			"id": id,
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &query.Provider, nil
+	return &query.ProviderSelf, nil
 }
 
 // / SetPublic sets the provider to public or private
@@ -290,11 +315,15 @@ func (p *Provider) secretClient() *graphql.Client {
 	return client
 }
 
-func (p *Provider) ScriptGroup(alt_id string) *ScriptGroup {
-	return &ScriptGroup{
-		AltID:    alt_id,
-		Provider: p,
+func (p *Provider) ScriptGroup(alt_id string) (*ScriptGroup, error) {
+	id, err := utilities.NewAltUUID(alt_id)
+	if err != nil {
+		return nil, err
 	}
+	return &ScriptGroup{
+		AltID:    id,
+		Provider: p,
+	}, nil
 }
 
 func (p *Provider) Script(script_group_uuid string, script_alt_id string) *Script {
@@ -311,8 +340,8 @@ func (p *Provider) ResetProviderKeys(ctx context.Context) error {
 		return err
 	}
 
-	p.ApiKey = &mutation.ProviderSelf.Keys.Reset.ApiKey
-	p.SecretKey = &mutation.ProviderSelf.Keys.Reset.SecretKey
+	p.ApiKey = &mutation.Provider.Keys.Reset.ApiKey
+	p.SecretKey = &mutation.Provider.Keys.Reset.SecretKey
 
 	return nil
 }

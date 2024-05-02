@@ -6,10 +6,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/myscribae/myscribae-sdk-go/gql"
+	"github.com/myscribae/myscribae-sdk-go/utilities"
 )
 
 type ScriptGroup struct {
-	AltID    string
+	AltID    utilities.AltUUID
 	Uuid     *uuid.UUID
 	Provider *Provider
 }
@@ -34,7 +35,7 @@ func (sg *ScriptGroup) Update(ctx context.Context, profile UpdateScriptGroupInpu
 	}
 
 	err = sg.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"provider_id": sg.Provider.Uuid,
+		"provider_id": sg.Provider.ID(),
 		"id":          sg.AltID,
 		"changes":     string(changes),
 	})
@@ -50,20 +51,21 @@ func (sg *ScriptGroup) Read(ctx context.Context) (*gql.ScriptGroupProfile, error
 	var query gql.GetScriptGroup
 
 	if err := sg.Provider.Client.Query(ctx, &query, map[string]interface{}{
-		"id": sg.AltID,
+		"id":          sg.AltID,
+		"provider_id": sg.Provider.altId,
 	}); err != nil {
 		return nil, err
 	}
 
-	sg.Uuid = &query.Provider.ScriptGroup.Uuid
-	return &query.Provider.ScriptGroup, nil
+	sg.Uuid = &query.ProviderSelf.ScriptGroup.Uuid
+	return &query.ProviderSelf.ScriptGroup, nil
 }
 
 func (sg *ScriptGroup) Create(ctx context.Context, profile CreateScriptGroupInput) (*uuid.UUID, error) {
 	var mutation gql.CreateNewScriptGroup
 	err := sg.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"provider_id": sg.Provider.Uuid,
-		"alt_id":      sg.AltID,
+		"provider_id": sg.Provider.ID(),
+		"alt_id":      sg.AltID.String(),
 		"name":        profile.Name,
 		"description": profile.Description,
 		"public":      profile.Public,

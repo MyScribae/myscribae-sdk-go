@@ -8,4 +8,7 @@ require (
 	github.com/hasura/go-graphql-client v0.12.1
 )
 
-require nhooyr.io/websocket v1.8.10 // indirect
+require (
+	github.com/joho/godotenv v1.5.1 // indirect
+	nhooyr.io/websocket v1.8.10 // indirect
+)
