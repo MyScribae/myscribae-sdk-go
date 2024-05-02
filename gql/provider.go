@@ -71,20 +71,31 @@ type EditScriptGroup struct {
 type GetScript struct {
 	ProviderSelf struct {
 		ScriptGroup struct {
-			Script ScriptProfile `graphql:"script(id:$id)"`
+			Script GQLScriptProfile `graphql:"script(id:$id)"`
 		} `graphql:"script_group(id:$script_group_id)"`
 	} `graphql:"provider_self(id:$provider_id)"`
 }
 
+type GQLScriptProfile struct {
+	Uuid             uuid.UUID `graphql:"uuid"`
+	AltID            string    `graphql:"alt_id"`
+	Name             string    `graphql:"name"`
+	Description      string    `graphql:"description"`
+	Recurrence       string    `graphql:"recurrence"`
+	PriceInCents     uint      `graphql:"price_in_cents"`
+	SlaSec           int       `graphql:"sla_sec"`
+	TokenLifetimeSec int       `graphql:"token_lifetime_sec"`
+	Public           bool      `graphql:"public"`
+}
 type ScriptProfile struct {
 	Uuid             uuid.UUID `graphql:"uuid"`
 	AltID            string    `graphql:"alt_id"`
 	Name             string    `graphql:"name"`
 	Description      string    `graphql:"description"`
 	Recurrence       string    `graphql:"recurrence"`
-	PriceInCents     int       `graphql:"price_in_cents"`
-	SlaSec           int       `graphql:"sla_sec"`
-	TokenLifetimeSec int       `graphql:"token_lifetime_sec"`
+	PriceInCents     uint      `graphql:"price_in_cents"`
+	SlaSec           uint      `graphql:"sla_sec"`
+	TokenLifetimeSec uint      `graphql:"token_lifetime_sec"`
 	Public           bool      `graphql:"public"`
 }
 
@@ -96,7 +107,7 @@ type EditScript struct {
 					Uuid uuid.UUID
 				} `graphql:"edit(changes:$changes)"`
 			} `graphql:"script(id:$id)"`
-		} `graphql:"script_group(id:$script_group_uuid)"`
+		} `graphql:"script_group(id:$script_group_id)"`
 	} `graphql:"provider(id:$provider_id)"`
 }
 

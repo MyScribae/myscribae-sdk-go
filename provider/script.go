@@ -6,40 +6,41 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/myscribae/myscribae-sdk-go/gql"
+	"github.com/myscribae/myscribae-sdk-go/utilities"
 )
 
 type Script struct {
-	ScriptGroupUuid *uuid.UUID
-	Uuid            *uuid.UUID
-	AltID           string
-	Provider        *Provider
+	ScriptGroupID utilities.AltUUID
+	AltID         utilities.AltUUID
+	Uuid          *uuid.UUID
+	Provider      *Provider
 }
 
 type CreateScriptInput struct {
-	AltID            string `json:"alt_id"`
-	Name             string `json:"name"`
-	Description      string `json:"description"`
-	Recurrence       string `json:"recurrence"`
-	PriceInCents     int    `json:"price_in_cents"`
-	SlaSec           int    `json:"sla_sec"`
-	TokenLifetimeSec int    `json:"token_lifetime_sec"`
-	Public           bool   `json:"public"`
+	AltID            string               `json:"alt_id"`
+	Name             string               `json:"name"`
+	Description      string               `json:"description"`
+	Recurrence       utilities.Recurrence `json:"recurrence"`
+	PriceInCents     utilities.MoneyValue `json:"price_in_cents"`
+	SlaSec           utilities.UInt       `json:"sla_sec"`
+	TokenLifetimeSec utilities.UInt       `json:"token_lifetime_sec"`
+	Public           bool                 `json:"public"`
 }
 
 type UpdateScriptInput struct {
-	Name             *string `json:"name"`
-	Description      *string `json:"description"`
-	PriceInCents     *int    `json:"price_in_cents"`
-	SlaSec           *int    `json:"sla_sec"`
-	TokenLifetimeSec *int    `json:"token_lifetime_sec"`
-	Public           *bool   `json:"public"`
+	Name             *string               `json:"name"`
+	Description      *string               `json:"description"`
+	PriceInCents     *utilities.MoneyValue `json:"price_in_cents"`
+	SlaSec           *utilities.UInt       `json:"sla_sec"`
+	TokenLifetimeSec *utilities.UInt       `json:"token_lifetime_sec"`
+	Public           *bool                 `json:"public"`
 }
 
 func (s *Script) Create(ctx context.Context, input CreateScriptInput) (*uuid.UUID, error) {
 	var mutation gql.CreateNewScript
 	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"provider_id":        s.Provider.Uuid,
-		"script_group_id":    s.ScriptGroupUuid,
+		"provider_id":        s.Provider.ID(),
+		"script_group_id":    s.ScriptGroupID,
 		"alt_id":             input.AltID,
 		"name":               input.Name,
 		"description":        input.Description,
@@ -60,16 +61,26 @@ func (s *Script) Create(ctx context.Context, input CreateScriptInput) (*uuid.UUI
 
 func (s *Script) Read(ctx context.Context) (*gql.ScriptProfile, error) {
 	var query gql.GetScript
-
 	if err := s.Provider.Client.Query(ctx, &query, map[string]interface{}{
-		"script_group_id": s.ScriptGroupUuid,
+		"provider_id":     s.Provider.ID(),
+		"script_group_id": s.ScriptGroupID,
 		"id":              s.AltID,
 	}); err != nil {
 		return nil, err
 	}
 
 	s.Uuid = &query.ProviderSelf.ScriptGroup.Script.Uuid
-	return &query.ProviderSelf.ScriptGroup.Script, nil
+	return &gql.ScriptProfile{
+		Uuid:             query.ProviderSelf.ScriptGroup.Script.Uuid,
+		AltID:            query.ProviderSelf.ScriptGroup.Script.AltID,
+		Name:             query.ProviderSelf.ScriptGroup.Script.Name,
+		Description:      query.ProviderSelf.ScriptGroup.Script.Description,
+		Recurrence:       query.ProviderSelf.ScriptGroup.Script.Recurrence,
+		PriceInCents:     query.ProviderSelf.ScriptGroup.Script.PriceInCents,
+		SlaSec:           uint(query.ProviderSelf.ScriptGroup.Script.SlaSec),
+		TokenLifetimeSec: uint(query.ProviderSelf.ScriptGroup.Script.TokenLifetimeSec),
+		Public:           query.ProviderSelf.ScriptGroup.Script.Public,
+	}, nil
 }
 
 func (s *Script) Update(ctx context.Context, input UpdateScriptInput) (*uuid.UUID, error) {
@@ -80,12 +91,13 @@ func (s *Script) Update(ctx context.Context, input UpdateScriptInput) (*uuid.UUI
 
 	var mutation gql.EditScript
 	err = s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"script_group_id": s.ScriptGroupUuid,
+		"provider_id":     s.Provider.ID(),
+		"script_group_id": s.ScriptGroupID,
 		"id":              s.AltID,
 		"changes":         string(changes),
 	})
 	if err != nil {
-		panic("failed to update script: " + err.Error())
+		return nil, err
 	}
 
 	s.Uuid = &mutation.Provider.ScriptGroup.Script.Edit.Uuid
@@ -93,11 +105,22 @@ func (s *Script) Update(ctx context.Context, input UpdateScriptInput) (*uuid.UUI
 }
 
 func (s *Script) Delete(ctx context.Context) error {
+	var changes = struct {
+		Public bool `json:"public"`
+	} {
+		Public: false,
+	}
+	changesBytes, err := json.Marshal(changes)
+	if err != nil {
+		return err
+	}
+
 	var mutation gql.EditScript
-	err := s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"script_group_id": s.ScriptGroupUuid,
+	err = s.Provider.Client.Mutate(ctx, &mutation, map[string]interface{}{
+		"provider_id":     s.Provider.ID(),
+		"script_group_id": s.ScriptGroupID,
 		"id":              s.AltID,
-		"public":          false,
+		"changes": 		  string(changesBytes),
 	})
 	if err != nil {
 		return err
@@ -123,11 +146,11 @@ func (si *UpdateScriptInput) MarshalJSON() ([]byte, error) {
 	}
 
 	if si.SlaSec != nil {
-		m["sla_sec"] = *si.SlaSec
+		m["sla_secs"] = *si.SlaSec
 	}
 
 	if si.TokenLifetimeSec != nil {
-		m["token_lifetime_sec"] = *si.TokenLifetimeSec
+		m["token_lifetime_secs"] = *si.TokenLifetimeSec
 	}
 
 	if si.Public != nil {

@@ -22,6 +22,7 @@ type CreateScriptGroupInput struct {
 }
 
 type UpdateScriptGroupInput struct {
+	AltID       *string `json:"alt_id"`
 	Name        *string `json:"name"`
 	Description *string `json:"description"`
 	Public      *bool   `json:"public"`
@@ -83,6 +84,9 @@ func (sg *ScriptGroup) Create(ctx context.Context, profile CreateScriptGroupInpu
 func (sgi *UpdateScriptGroupInput) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
 
+	if sgi.AltID != nil {
+		data["alt_id"] = *sgi.AltID
+	}
 	if sgi.Name != nil {
 		data["name"] = *sgi.Name
 	}

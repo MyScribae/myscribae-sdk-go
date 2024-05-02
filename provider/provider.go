@@ -326,8 +326,16 @@ func (p *Provider) ScriptGroup(alt_id string) (*ScriptGroup, error) {
 	}, nil
 }
 
-func (p *Provider) Script(script_group_uuid string, script_alt_id string) *Script {
-	return &Script{}
+func (p *Provider) Script(script_group_id utilities.AltUUID, alt_id string) (*Script, error) {
+	id, err := utilities.NewAltUUID(alt_id)
+	if err != nil {
+		return nil, err
+	}
+	return &Script{
+		AltID:           id,
+		ScriptGroupID: script_group_id,
+		Provider: 	  p,
+	}, nil
 }
 
 func (p *Provider) ResetProviderKeys(ctx context.Context) error {
