@@ -107,7 +107,7 @@ func (s *Script) Update(ctx context.Context, input UpdateScriptInput) (*uuid.UUI
 func (s *Script) Delete(ctx context.Context) error {
 	var changes = struct {
 		Public bool `json:"public"`
-	} {
+	}{
 		Public: false,
 	}
 	changesBytes, err := json.Marshal(changes)
@@ -120,7 +120,7 @@ func (s *Script) Delete(ctx context.Context) error {
 		"provider_id":     s.Provider.ID(),
 		"script_group_id": s.ScriptGroupID,
 		"id":              s.AltID,
-		"changes": 		  string(changesBytes),
+		"changes":         string(changesBytes),
 	})
 	if err != nil {
 		return err
@@ -146,11 +146,11 @@ func (si *UpdateScriptInput) MarshalJSON() ([]byte, error) {
 	}
 
 	if si.SlaSec != nil {
-		m["sla_secs"] = *si.SlaSec
+		m["sla_sec"] = *si.SlaSec
 	}
 
 	if si.TokenLifetimeSec != nil {
-		m["token_lifetime_secs"] = *si.TokenLifetimeSec
+		m["token_lifetime_sec"] = *si.TokenLifetimeSec
 	}
 
 	if si.Public != nil {
