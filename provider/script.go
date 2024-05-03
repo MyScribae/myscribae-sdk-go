@@ -10,8 +10,8 @@ import (
 )
 
 type Script struct {
-	ScriptGroupID utilities.AltUUID
-	AltID         utilities.AltUUID
+	ScriptGroupID utilities.AltUuid
+	AltID         utilities.AltUuid
 	Uuid          *uuid.UUID
 	Provider      *Provider
 }

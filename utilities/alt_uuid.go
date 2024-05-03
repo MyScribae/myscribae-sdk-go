@@ -7,20 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
-type AltUUID string
+type AltUuid string
 
-func errInvalidAltUUID(val string) error {
+func errInvalidAltUuid(val string) error {
 	return fmt.Errorf("invalid alt id or uuid.  expecting format like (12345678-1234-1234-1234-123456789abc) or (my_alt_id). received: %s", val)
 }
 
-func NewAltUUID(altIdOrUuid string) (AltUUID, error) {
-	result, err := NewAltUUIDPointer(&altIdOrUuid)
+func NewAltUuid(altIdOrUuid string) (AltUuid, error) {
+	result, err := NewAltUuidPointer(&altIdOrUuid)
 	if result == nil {
 		return "", err
 	}
 	return *result, err
 }
-func NewAltUUIDPointer(altIdOrUuid *string) (*AltUUID, error) {
+func NewAltUuidPointer(altIdOrUuid *string) (*AltUuid, error) {
 	if altIdOrUuid == nil {
 		return nil, nil
 	}
@@ -29,19 +29,19 @@ func NewAltUUIDPointer(altIdOrUuid *string) (*AltUUID, error) {
 	if _, err := uuid.Parse(*altIdOrUuid); err != nil {
 		// is not uuid, check if lower, snake case
 		if !isLowerSnakeCase(*altIdOrUuid) {
-			return nil, errInvalidAltUUID(*altIdOrUuid)
+			return nil, errInvalidAltUuid(*altIdOrUuid)
 		}
 	}
 
-	parsed := AltUUID(*altIdOrUuid)
+	parsed := AltUuid(*altIdOrUuid)
 	return &parsed, nil
 }
 
-func (u AltUUID) String() string {
+func (u AltUuid) String() string {
 	return string(u)
 }
 
-func (u *AltUUID) GetGraphQLType() string {
+func (u *AltUuid) GetGraphQLType() string {
 	return "AltUuid"
 }
 

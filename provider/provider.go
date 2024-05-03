@@ -21,7 +21,7 @@ type Provider struct {
 	ApiUrl string
 
 	Uuid      uuid.UUID
-	altId     *utilities.AltUUID
+	altId     *utilities.AltUuid
 	SecretKey *string
 	ApiKey    *string
 
@@ -30,9 +30,9 @@ type Provider struct {
 	Client *graphql.Client
 }
 
-func (p *Provider) ID() utilities.AltUUID {
+func (p *Provider) ID() utilities.AltUuid {
 	if p.altId == nil {
-		id, err := utilities.NewAltUUID(p.Uuid.String())
+		id, err := utilities.NewAltUuid(p.Uuid.String())
 		if err != nil {
 			log.Panicf("failed to create alt id: %s", err.Error())
 		}
@@ -305,7 +305,7 @@ func (p *Provider) secretClient() *graphql.Client {
 }
 
 func (p *Provider) ScriptGroup(alt_id string) (*ScriptGroup, error) {
-	id, err := utilities.NewAltUUID(alt_id)
+	id, err := utilities.NewAltUuid(alt_id)
 	if err != nil {
 		return nil, err
 	}
@@ -315,8 +315,8 @@ func (p *Provider) ScriptGroup(alt_id string) (*ScriptGroup, error) {
 	}, nil
 }
 
-func (p *Provider) Script(script_group_id utilities.AltUUID, alt_id string) (*Script, error) {
-	id, err := utilities.NewAltUUID(alt_id)
+func (p *Provider) Script(script_group_id utilities.AltUuid, alt_id string) (*Script, error) {
+	id, err := utilities.NewAltUuid(alt_id)
 	if err != nil {
 		return nil, err
 	}

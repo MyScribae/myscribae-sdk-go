@@ -10,7 +10,7 @@ import (
 )
 
 type ScriptGroup struct {
-	AltID    utilities.AltUUID
+	AltID    utilities.AltUuid
 	Uuid     *uuid.UUID
 	Provider *Provider
 }
