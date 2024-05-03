@@ -50,7 +50,6 @@ func (sg *ScriptGroup) Update(ctx context.Context, profile UpdateScriptGroupInpu
 
 func (sg *ScriptGroup) Read(ctx context.Context) (*gql.ScriptGroupProfile, error) {
 	var query gql.GetScriptGroup
-
 	if err := sg.Provider.Client.Query(ctx, &query, map[string]interface{}{
 		"id":          sg.AltID,
 		"provider_id": sg.Provider.altId,

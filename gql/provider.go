@@ -51,11 +51,12 @@ type GetScriptGroup struct {
 }
 
 type ScriptGroupProfile struct {
-	Uuid        uuid.UUID `graphql:"uuid"`
-	AltID       string    `graphql:"alt_id"`
-	Name        string    `graphql:"name"`
-	Description string    `graphql:"description"`
-	Public      bool      `graphql:"public"`
+	Uuid         uuid.UUID `graphql:"uuid"`
+	ProviderUuid uuid.UUID `graphql:"provider_uuid"`
+	AltID        string    `graphql:"alt_id"`
+	Name         string    `graphql:"name"`
+	Description  string    `graphql:"description"`
+	Public       bool      `graphql:"public"`
 }
 
 type EditScriptGroup struct {
