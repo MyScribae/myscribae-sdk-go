@@ -41,7 +41,7 @@ func (u AltUUID) String() string {
 	return string(u)
 }
 
-func (u AltUUID) GetGraphQLType() string {
+func (u *AltUUID) GetGraphQLType() string {
 	return "AltUuid"
 }
 
