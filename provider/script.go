@@ -60,10 +60,6 @@ func (s *Script) Create(ctx context.Context, input CreateScriptInput) (*uuid.UUI
 }
 
 func (s *Script) Read(ctx context.Context) (*gql.ScriptProfile, error) {
-	if s.Provider == nil {
-		panic("PROVIDER IS NULL WTF")
-	}
-
 	var query gql.GetScript
 	if err := s.Provider.Client.Query(ctx, &query, map[string]interface{}{
 		"provider_id":     s.Provider.ID(),
