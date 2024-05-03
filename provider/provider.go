@@ -341,7 +341,7 @@ func (p *Provider) Script(script_group_id utilities.AltUUID, alt_id string) (*Sc
 func (p *Provider) ResetProviderKeys(ctx context.Context) error {
 	var mutation gql.ResetProviderKeys
 	err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"providerId": p.Uuid.String(),
+		"provider_id": p.Uuid.String(),
 	})
 
 	if err != nil {
