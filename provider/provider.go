@@ -21,7 +21,7 @@ type Provider struct {
 	ApiUrl string
 
 	Uuid      uuid.UUID
-	altId        *utilities.AltUUID
+	altId     *utilities.AltUUID
 	SecretKey *string
 	ApiKey    *string
 
@@ -171,16 +171,10 @@ func (p *Provider) Update(ctx context.Context, profile UpdateProviderProfileInpu
 		return nil, err
 	}
 
-	id := p.Uuid.String()
-	altIdOrUuid, err := utilities.NewAltUUID(id)
-	if err != nil {
-		return nil, err
-	}
-
 	// update provider
 	var mutation gql.EditProviderProfile
 	if err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"id":      altIdOrUuid,
+		"id":      p.ID(),
 		"changes": string(changes),
 	}); err != nil {
 		log.Panicf("failed to update provider: %s", err.Error())
@@ -191,17 +185,12 @@ func (p *Provider) Update(ctx context.Context, profile UpdateProviderProfileInpu
 
 // / Read reads the provider profile
 func (p *Provider) Read(ctx context.Context) (*gql.ProviderProfile, error) {
-	id, err := utilities.NewAltUUID(p.Uuid.String())
-	if err != nil {
-		return nil, err
-	}
-
 	var query gql.GetProviderProfile
-	err = p.Client.Query(
+	err := p.Client.Query(
 		ctx,
 		&query,
 		map[string]interface{}{
-			"id": id,
+			"id": p.ID(),
 		},
 	)
 	if err != nil {
@@ -231,7 +220,7 @@ func (p *Provider) GetPublicKey(ctx context.Context) (*string, error) {
 		ctx,
 		&query,
 		map[string]interface{}{
-			"provider_id": p.Uuid.String(),
+			"provider_id": p.Uuid.ID(),
 		},
 	)
 	if err != nil {
@@ -332,16 +321,16 @@ func (p *Provider) Script(script_group_id utilities.AltUUID, alt_id string) (*Sc
 		return nil, err
 	}
 	return &Script{
-		AltID:           id,
+		AltID:         id,
 		ScriptGroupID: script_group_id,
-		Provider: 	  p,
+		Provider:      p,
 	}, nil
 }
 
 func (p *Provider) ResetProviderKeys(ctx context.Context) error {
 	var mutation gql.ResetProviderKeys
 	err := p.Client.Mutate(ctx, &mutation, map[string]interface{}{
-		"provider_id": p.Uuid.String(),
+		"provider_id": p.ID(),
 	})
 
 	if err != nil {
