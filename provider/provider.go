@@ -367,7 +367,7 @@ func (pi *UpdateProviderProfileInput) MarshalJSON() ([]byte, error) {
 	}
 
 	if pi.BannerUrl != nil {
-		data["banner"] = *pi.BannerUrl
+		data["banner_url"] = *pi.BannerUrl
 	}
 
 	if pi.Url != nil {
