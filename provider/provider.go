@@ -52,7 +52,7 @@ type ProviderConfig struct {
 type CreateProviderProfileInput struct {
 	AltID          *string `json:"alt_id"`
 	Name           string  `json:"name"`
-	Category       *string `json:"category"`
+	CategoryID     *string `json:"category_id"`
 	Description    string  `json:"description"`
 	LogoUrl        *string `json:"logo_url"`
 	BannerUrl      *string `json:"banner_url"`
@@ -65,7 +65,7 @@ type CreateProviderProfileInput struct {
 type UpdateProviderProfileInput struct {
 	AltID          *string `json:"alt_id"`
 	Name           *string `json:"name"`
-	Category       *string `json:"category"`
+	CategoryID     *string `json:"category_id"`
 	Description    *string `json:"description"`
 	LogoUrl        *string `json:"logo_url"`
 	BannerUrl      *string `json:"banner_url"`
@@ -95,10 +95,10 @@ func CreateNewProvider(ctx context.Context, client *graphql.Client, input *Creat
 		&mutation,
 		map[string]interface{}{
 			"alt_id":          input.AltID,
-			"category":        input.Category,
+			"category_id":     input.CategoryID,
 			"name":            input.Name,
 			"description":     input.Description,
-			"logo":            input.LogoUrl,
+			"logo_url":        input.LogoUrl,
 			"url":             input.Url,
 			"color":           input.Color,
 			"public":          input.Public,
@@ -354,8 +354,8 @@ func (pi *UpdateProviderProfileInput) MarshalJSON() ([]byte, error) {
 		data["name"] = *pi.Name
 	}
 
-	if pi.Category != nil {
-		data["category"] = *pi.Category
+	if pi.CategoryID != nil {
+		data["category_id"] = *pi.CategoryID
 	}
 
 	if pi.Description != nil {
@@ -363,7 +363,7 @@ func (pi *UpdateProviderProfileInput) MarshalJSON() ([]byte, error) {
 	}
 
 	if pi.LogoUrl != nil {
-		data["logo"] = *pi.LogoUrl
+		data["logo_url"] = *pi.LogoUrl
 	}
 
 	if pi.BannerUrl != nil {
