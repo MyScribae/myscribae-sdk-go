@@ -7,7 +7,7 @@ import (
 type ProviderProfile struct {
 	Uuid           uuid.UUID `graphql:"uuid"`
 	AltID          *string   `graphql:"alt_id"`
-	Category       string    `graphql:"category"`
+	Category       string    `graphql:"category_id"`
 	Name           string    `graphql:"name"`
 	Description    string    `graphql:"description"`
 	Color          *string   `graphql:"color"`
@@ -51,11 +51,11 @@ type GetScriptGroup struct {
 }
 
 type ScriptGroupProfile struct {
-	Uuid         uuid.UUID `graphql:"uuid"`
-	AltID        string    `graphql:"alt_id"`
-	Name         string    `graphql:"name"`
-	Description  string    `graphql:"description"`
-	Public       bool      `graphql:"public"`
+	Uuid        uuid.UUID `graphql:"uuid"`
+	AltID       string    `graphql:"alt_id"`
+	Name        string    `graphql:"name"`
+	Description string    `graphql:"description"`
+	Public      bool      `graphql:"public"`
 }
 
 type EditScriptGroup struct {
@@ -170,6 +170,6 @@ type CreateNewProvider struct {
 	Providers struct {
 		Create struct {
 			Uuid uuid.UUID `graphql:"uuid"`
-		} `graphql:"create(name: $name, description: $description, category: $category)"`
+		} `graphql:"create(name: $name, description: $description, category_id: $category_id)"`
 	} `graphql:"providers"`
 }
