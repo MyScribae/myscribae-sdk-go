@@ -9,6 +9,6 @@ require (
 )
 
 require (
-	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/joho/godotenv v1.5.1
 	nhooyr.io/websocket v1.8.10 // indirect
 )
