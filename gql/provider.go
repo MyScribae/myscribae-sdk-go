@@ -15,8 +15,10 @@ type ProviderProfile struct {
 	BannerUrl      *string   `graphql:"banner_url"`
 	MyRole         *string   `graphql:"my_role"`
 	Url            *string   `graphql:"url"`
-	AccountService bool      `graphql:"account_service"`
-	Public         bool      `graphql:"public"`
+	AccountService struct {
+		Enabled bool `graphql:"enabled"`
+	} `graphql:"account_service"`
+	Public bool `graphql:"public"`
 }
 
 type RemoteScript struct {
